@@ -129,9 +129,6 @@ results = await ensemble.generate_and_score(prompts=[prompt])
 - Different models may require different threshold interpretations
 - Performance may vary based on prompt complexity and domain
 
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🙏 Acknowledgments
 
