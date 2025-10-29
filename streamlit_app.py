@@ -23,26 +23,47 @@ from dotenv import load_dotenv
 # Apply nest_asyncio to handle asyncio in Streamlit
 nest_asyncio.apply()
 
-# Load environment variables
+# ----------------------------------------------------------------------
+# --- START MODIFIED BLOCK: FETCH API KEY FROM .env FILE ---
+# ----------------------------------------------------------------------
+
+# 1. Load environment variables from .env file
 load_dotenv()
 
-# Default API key from .env file
-default_api_key = os.getenv("GEMINI_API_KEY", "")
+# 2. Check for the key directly in environment variables (from .env or system)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Initialize api_key variable
+api_key = None 
 
 # Sidebar section for API key
 st.sidebar.markdown("### 🔑 API Key")
-api_key = st.sidebar.text_input(
-    "Enter your Gemini API Key:", 
-    value="",
-    type="password",
-    help="Get your API key from https://aistudio.google.com/app/apikey"
-)
 
-# Set the API key in environment
-if api_key:
-    os.environ["GOOGLE_API_KEY"] = api_key
+if GEMINI_API_KEY:
+    # If the key is in .env, use it and show a success message
+    os.environ["GOOGLE_API_KEY"] = GEMINI_API_KEY
+    st.sidebar.success("✅ Gemini API Key loaded from .env file")
+    api_key = GEMINI_API_KEY # Set api_key to enable the rest of the app
 else:
-    st.sidebar.warning("⚠️ Please enter a Gemini API key to use this app")
+    # If the key is NOT found in .env, show the input box as a fallback
+    api_key = st.sidebar.text_input(
+        "Enter your Gemini API Key:", 
+        value="",
+        type="password",
+        help="Key not found in .env. Get it from https://aistudio.google.com/app/apikey"
+    )
+
+    # If user provides key in input, use it
+    if api_key:
+        os.environ["GOOGLE_API_KEY"] = api_key
+    else:
+        # If no key is available from .env or input, show a warning
+        st.sidebar.warning("⚠️ Please enter a Gemini API key to use this app")
+
+# ----------------------------------------------------------------------
+# --- END MODIFIED BLOCK ---
+# ----------------------------------------------------------------------
+
 
 # Apply custom CSS for better styling
 st.markdown("""
@@ -230,7 +251,7 @@ if st.button("Generate and Score"):
     if not prompt:
         st.warning("Please enter a prompt.")
     elif not api_key:
-        st.error("⚠️ Please enter your Gemini API key in the sidebar")
+        st.error("⚠️ Gemini API key is missing. Please set the key in your environment variables (e.g., in the .env file) or enter it in the sidebar.")
     else:
         with st.spinner("Generating response and calculating hallucination scores..."):
             # Create a new event loop
@@ -258,12 +279,12 @@ if st.button("Generate and Score"):
                     # Check for standard score columns and also specific uqlm score columns
                     if (col.endswith('_score') or "_score" in col or 
                         col in ['semantic_negentropy', 'exact_match', 'noncontradiction', 
-                               'min_probability', 'mean_probability', 'perplexity']):
+                                'min_probability', 'mean_probability', 'perplexity']):
                         score_name = col
                         if not pd.isna(df[col].iloc[0]):
                             score_value = float(df[col].iloc[0])
                             scores_dict[score_name] = score_value
-                
+                    
                 # Display scores as a bar chart
                 if scores_dict:
                     scores_df = pd.DataFrame({
@@ -324,18 +345,5 @@ with st.expander("📚 About uqlm Library"):
     - **Ensemble**: Combines multiple methods for more robust evaluation
     
     Higher scores (closer to 1.0) indicate higher confidence and lower likelihood of hallucination.
-    """)
-
-# Add demo guidance
-with st.expander("🔬 Demonstration Tips"):
-    st.markdown("""
-    ### Tips for demonstrating hallucination detection:
-    
-    1. **Compare factual vs fictional questions**: Try a factual question like "What is the capital of France?" and a fictional one like "Tell me about Zorblaxians from Planet Xenu".
-    
-    2. **Test mathematical reasoning**: The model should be confident about simple math like "1 + 2 + 3 + 4 + 5" but less confident about impossible questions like "1 / 0".
-    
-    3. **Try different scorer methods**: Black-Box scorers work best with multiple samples, while White-Box is faster but may have less nuance.
-    
-    4. **Adjust temperature**: Higher temperature values lead to more creative (but potentially more hallucinated) responses.
-    """)
+    """
+    )
